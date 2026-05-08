@@ -340,12 +340,22 @@ def callback_worker(call):
         bot.send_message(chat_id, MESSAGES[lang]["choose_time"], reply_markup=markup)
 
     # 6. ЗАПИСЬ И ВСЕ КНОПКИ (ОТМЕНА, ОТЗЫВ, ПЕРЕЗАПИСЬ)
+    # 6. ЗАПИСЬ И ВСЕ КНОПКИ
     elif call.data.startswith("time_"):
         time = call.data.replace("time_", "")
         data = user_data.get(chat_id)
-        name, date, master_id, service_key = data["name"], data["date"], data["master"], data["service"]
+        
+        # Берем данные из памяти
+        name = data["name"]
+        date = data["date"]
+        master_id = data["master"]
+        service_key = data["service"]
+        lang = data["lang"]
+
+        # КЛЮЧЕВОЙ МОМЕНТ: Берем перевод услуги из словаря MASTERS
         service_name = MASTERS[master_id]["services"][service_key][lang]
 
+        # Сохраняем в базу данных
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
         cur.execute("INSERT INTO bookings (chat_id, name, service, date, time) VALUES (?, ?, ?, ?, ?)",
@@ -353,22 +363,29 @@ def callback_worker(call):
         conn.commit()
         conn.close()
 
-        # Создаем ОДИН markup и добавляем все кнопки сразу
+        # Создаем меню кнопок
         markup = telebot.types.InlineKeyboardMarkup(row_width=1)
         markup.add(
             telebot.types.InlineKeyboardButton(MESSAGES[lang]["cancel"], callback_data=f"cancel_{date}_{time}"),
-            telebot.types.InlineKeyboardButton("⭐ Оставить отзыв", callback_data=f"review_{master_id}"),
-            telebot.types.InlineKeyboardButton("🔁 Записаться снова", callback_data="restart_booking")
+            telebot.types.InlineKeyboardButton("⭐ Leave review" if lang == "en" else "⭐ Оставить отзыв", callback_data=f"review_{master_id}"),
+            telebot.types.InlineKeyboardButton("🔁 Book again" if lang == "en" else "🔁 Записаться снова", callback_data="restart_booking")
         )
 
-        bot.send_message(
-            chat_id,
-            f"{MESSAGES[lang]['success']}\n\n👤 Мастер: {MASTERS[master_id]['name']}\n💅 Услуга: {service_name}\n📅 {date}\n⏰ {time}",
-            reply_markup=markup
+        # Отправляем итоговое сообщение на нужном языке
+        master_name = MASTERS[master_id]['name']
+        
+        caption = (
+            f"{MESSAGES[lang]['success']}\n\n"
+            f"👤 {'Master' if lang == 'en' else 'Мастер'}: {master_name}\n"
+            f"💅 {'Service' if lang == 'en' else 'Услуга'}: {service_name}\n"
+            f"📅 {date}\n"
+            f"⏰ {time}"
         )
+
+        bot.send_message(chat_id, caption, reply_markup=markup)
         
         try:
-            bot.send_message(ADMIN_ID, f"📩 Новая запись!\n👤 {name}\n🧑‍🔧 {MASTERS[master_id]['name']}\n💅 {service_name}\n📅 {date}\n⏰ {time}")
+            bot.send_message(ADMIN_ID, f"📩 Новая запись!\n👤 {name}\n🧑‍🔧 {master_name}\n💅 {service_name}\n📅 {date}\n⏰ {time}")
         except: pass
 
     # 7. ОБРАБОТКА ОТЗЫВА
