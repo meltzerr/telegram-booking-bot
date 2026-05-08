@@ -324,19 +324,30 @@ def callback_worker(call):
         bot.send_message(chat_id, MESSAGES[lang]["choose_date"], reply_markup=markup)
 
     # 5. ВЫБОР ДАТЫ
+    # 5. ВЫБОР ДАТЫ
     elif call.data.startswith("date_"):
         date = call.data.replace("date_", "")
+        
+        # Проверяем, есть ли данные пользователя в памяти
+        if chat_id not in user_data:
+            bot.send_message(chat_id, "Ошибка: данные потеряны. Начни сначала: /start")
+            return
+
         user_data[chat_id]["date"] = date
+        lang = user_data[chat_id].get("lang", "ru") # берем язык или ставим ru по умолчанию
+
         taken = get_taken_slots(date)
         available = [t for t in time_slots if t not in taken]
 
         if not available:
-            bot.send_message(chat_id, f"😔 На {date} мест нет.")
+            msg = f"😔 На {date} мест нет." if lang == "ru" else f"😔 No slots available for {date}."
+            bot.send_message(chat_id, msg)
             return
 
         markup = telebot.types.InlineKeyboardMarkup(row_width=2)
         for t in available:
             markup.add(telebot.types.InlineKeyboardButton(t, callback_data=f"time_{t}"))
+        
         bot.send_message(chat_id, MESSAGES[lang]["choose_time"], reply_markup=markup)
 
     # 6. ЗАПИСЬ И ВСЕ КНОПКИ (ОТМЕНА, ОТЗЫВ, ПЕРЕЗАПИСЬ)
