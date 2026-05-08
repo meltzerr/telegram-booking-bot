@@ -10,8 +10,8 @@ if 'PYTHONANYWHERE_DOMAIN' in os.environ:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'bookings.db')
 
-TOKEN = "8392920809:AAGefiopx9Pp2v79eKB8c2nEJmU1RXkJQv4"
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"))
+
 
 # храню временные данные пользователя (пока он заполняет форму)
 user_data = {}
